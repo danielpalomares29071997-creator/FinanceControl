@@ -391,3 +391,4 @@ function renderHistory() {
     investments.forEach(i => tb.innerHTML += `<tr><td>${i.name}</td><td>${i.date}</td><td>${i.expiry||'-'}</td><td>${formatCurrency(i.value)}</td><td><button onclick="deleteInvestment(${i.id})">🗑️</button></td></tr>`);
 }
 function deletePlan(id) { plans = plans.filter(p=>p.id!==id); renderPlansTable(); saveLocal(); }
+
