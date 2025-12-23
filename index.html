@@ -16,6 +16,7 @@
 </head>
 <body>
 
+    <!-- BARRA LATERAL -->
     <nav class="sidebar">
         <div class="brand">
             <span class="material-icons-outlined">insights</span>
@@ -62,8 +63,9 @@
         </div>
     </nav>
 
+    <!-- CONTEÚDO PRINCIPAL -->
     <main class="main-content">
-        <!-- DASHBOARD CENTRAL -->
+        <!-- PÁGINA: DASHBOARD -->
         <section id="dashboard" class="page-section active-section">
             <div class="page-header">
                 <div class="page-title">
@@ -75,7 +77,7 @@
             <div class="dash-filters">
                 <div class="form-group" style="margin:0"><label>Data Início</label><input type="date" id="dashGlobalStart" class="form-control" onchange="updateDashboard()"></div>
                 <div class="form-group" style="margin:0"><label>Data Final</label><input type="date" id="dashGlobalEnd" class="form-control" onchange="updateDashboard()"></div>
-                <button class="btn btn-blue" onclick="updateDashboard()" style="height: 45px;">Filtrar Análise</button>
+                <button class="btn btn-blue" onclick="updateDashboard()" style="height: 45px;">Filtrar</button>
             </div>
 
             <div class="kpi-grid">
@@ -87,11 +89,11 @@
 
             <div class="form-grid">
                 <div class="card"><h3>Distribuição de Ativos</h3><div style="height:250px"><canvas id="pieChart"></canvas></div></div>
-                <div class="card"><h3>Receitas vs Despesas</h3><div style="height:250px"><canvas id="barChartDash"></canvas></div></div>
+                <div class="card"><h3>Fluxo Financeiro</h3><div style="height:250px"><canvas id="barChartDash"></canvas></div></div>
             </div>
         </section>
 
-        <!-- DESPESAS E ÁRVORE -->
+        <!-- PÁGINA: DESPESAS -->
         <section id="despesas" class="page-section">
             <div class="page-header"><h2>Acompanhamento de Despesas</h2></div>
             <div class="form-grid">
@@ -100,17 +102,17 @@
                     <div id="expenseTree" style="margin-top: 20px;"></div>
                 </div>
                 <div class="card">
-                    <h3>Análise de Gastos</h3>
+                    <h3>Gastos por Categoria</h3>
                     <div style="height:300px; margin-top: 20px;"><canvas id="expenseCompareChart"></canvas></div>
                 </div>
             </div>
             <div class="card">
-                <h3>Últimas Saídas (Pessoal)</h3>
+                <h3>Histórico de Saídas (Pessoal)</h3>
                 <div class="table-container"><table><thead><tr><th>Data</th><th>Categoria</th><th>Descrição</th><th>Valor</th></tr></thead><tbody id="expenseTableBody"></tbody></table></div>
             </div>
         </section>
 
-        <!-- EVOLUÇÃO -->
+        <!-- PÁGINA: EVOLUÇÃO -->
         <section id="evolucao" class="page-section">
             <div class="page-header"><h2>Evolução Patrimonial</h2></div>
             <div class="card">
@@ -145,16 +147,16 @@
             </div>
         </section>
 
-        <!-- COMPARATIVO -->
+        <!-- PÁGINA: COMPARATIVO -->
         <section id="comparativo" class="page-section">
-            <div class="page-header"><h2>Planejado vs Realizado (Aportes)</h2></div>
+            <div class="page-header"><h2>Planejado vs Realizado</h2></div>
             <div class="kpi-grid">
                 <div class="card"><div class="kpi-label">Meta Total</div><div class="kpi-value" id="compTotalPlanned">R$ 0,00</div></div>
                 <div class="card"><div class="kpi-label">Realizado</div><div class="kpi-value text-green" id="compTotalRealized">R$ 0,00</div></div>
                 <div class="card"><div class="kpi-label">Atingimento</div><div class="kpi-value text-blue" id="compPercentage">0%</div></div>
             </div>
             <div class="card">
-                <h3>Gráfico de Comparação Mensal</h3>
+                <h3>Comparativo Mensal</h3>
                 <div style="height:350px"><canvas id="compBarChart"></canvas></div>
             </div>
         </section>
@@ -163,10 +165,10 @@
         <section id="carteira_giro" class="page-section">
             <div class="page-header"><h2>Carteira de Giro</h2></div>
             <div class="kpi-grid">
-                <div class="card"><div class="kpi-label">Saldo em Caixa</div><div class="kpi-value text-blue" id="balanceReinvest">R$ 0,00</div></div>
+                <div class="card"><div class="kpi-label">Saldo Disponível</div><div class="kpi-value text-blue" id="balanceReinvest">R$ 0,00</div></div>
                 <div class="card" style="display:flex; gap:10px; align-items:center;">
-                    <button class="btn btn-primary" onclick="handleTransaction('deposit', 'reinvest')">Adicionar Fundo</button>
-                    <button class="btn btn-danger" onclick="handleTransaction('withdraw', 'reinvest')">Retirar Fundo</button>
+                    <button class="btn btn-primary" onclick="handleTransaction('deposit', 'reinvest')">Depositar</button>
+                    <button class="btn btn-danger" onclick="handleTransaction('withdraw', 'reinvest')">Sacar</button>
                 </div>
             </div>
             <div class="card"><div class="table-container"><table><thead><tr><th>Data</th><th>Tipo</th><th>Descrição</th><th>Valor</th><th>Ação</th></tr></thead><tbody id="tableBodyReinvest"></tbody></table></div></div>
@@ -179,15 +181,15 @@
                 <div class="card"><div class="kpi-label">Saldo Pessoal</div><div class="kpi-value text-yellow" id="balancePersonal">R$ 0,00</div></div>
                 <div class="card" style="display:flex; gap:10px; align-items:center;">
                     <button class="btn btn-blue" onclick="handleTransaction('deposit', 'personal')">Receita</button>
-                    <button class="btn btn-danger" onclick="handleTransaction('withdraw', 'personal')">Gasto / Investir</button>
+                    <button class="btn btn-danger" onclick="handleTransaction('withdraw', 'personal')">Gasto</button>
                 </div>
             </div>
             <div class="card"><div class="table-container"><table><thead><tr><th>Data</th><th>Tipo</th><th>Descrição</th><th>Valor</th><th>Ação</th></tr></thead><tbody id="tableBodyPersonal"></tbody></table></div></div>
         </section>
 
-        <!-- NOVOS APORTES -->
+        <!-- APORTES -->
         <section id="aportes" class="page-section">
-            <div class="page-header"><h2>Registrar Novo Aporte</h2></div>
+            <div class="page-header"><h2>Novo Aporte</h2></div>
             <div class="card">
                 <form id="investForm">
                     <div class="form-grid">
@@ -214,22 +216,22 @@
                             <div class="form-group"><label>Status</label><select id="inpStatus" class="form-control"><option>Ativo</option><option>Finalizado</option></select></div>
                         </div>
                     </div>
-                    <button class="btn btn-primary" type="submit" style="width:100%">Registrar Aporte</button>
+                    <button class="btn btn-primary" type="submit" style="width:100%">Salvar Aporte</button>
                 </form>
             </div>
         </section>
 
         <!-- PLANEJAMENTO -->
         <section id="planejamento" class="page-section">
-            <div class="page-header"><h2>Planejamento de Metas</h2></div>
+            <div class="page-header"><h2>Planejamento</h2></div>
             <div class="card">
                 <form id="planForm">
                     <div class="form-grid">
                         <div class="form-group"><label>Mês Referência</label><input type="month" id="inpPlanMonth" class="form-control" required></div>
                         <div class="form-group"><label>Meta de Aporte (R$)</label><input type="number" id="inpPlanValue" class="form-control" step="0.01" required></div>
-                        <div class="form-group"><label>Categoria</label><select id="inpPlanCategory" class="form-control"><option value="Geral">Geral (Total)</option><option>Investimentos</option></select></div>
+                        <div class="form-group"><label>Categoria</label><select id="inpPlanCategory" class="form-control"><option value="Geral">Geral</option><option>Investimentos</option></select></div>
                     </div>
-                    <button class="btn btn-primary" type="submit">Salvar Meta</button>
+                    <button class="btn btn-primary" type="submit">Definir Meta</button>
                 </form>
             </div>
             <div class="card">
@@ -239,34 +241,30 @@
 
         <!-- HISTÓRICO -->
         <section id="historico" class="page-section">
-            <div class="page-header"><h2>Histórico de Ativos</h2><button class="btn btn-danger" onclick="clearAllData()">Limpar Tudo</button></div>
+            <div class="page-header"><h2>Histórico</h2><button class="btn btn-danger" onclick="clearAllData()">Reset Local</button></div>
             <div class="card"><div class="table-container"><table><thead><tr><th>Ativo</th><th>Data</th><th>Vencimento</th><th>Valor</th><th>Ação</th></tr></thead><tbody id="investTableBody"></tbody></table></div></div>
         </section>
 
         <!-- CONFIGURAÇÕES -->
         <section id="config" class="page-section">
-            <div class="page-header"><h2>Painel de Controle e Cálculos</h2></div>
+            <div class="page-header"><h2>Configurações & Memória de Cálculo</h2></div>
             <div class="card">
-                <h3>Memória de Cálculo</h3>
+                <h3>Como os cálculos são feitos</h3>
                 <div class="calc-memo">
-                    <p>// Evolução Patrimonial</p>
-                    <p>Cálculo mensal utilizando juros compostos com base na taxa informada.</p>
-                    <p>Formula: M = P * (1 + i)^n</p>
-                    <hr style="margin:10px 0; opacity:0.1">
-                    <p>// Sincronização Automática</p>
-                    <p>Saídas da Carteira Pessoal com termo "Investimento" creditam automaticamente na Carteira Giro.</p>
+                    <p><strong>Evolução Patrimonial:</strong> M = P * (1 + i)^n. O sistema calcula a rentabilidade mensal projetada com base nas taxas CDI (11.25% ref) e IPCA (4.5% ref) configuradas.</p>
+                    <p><strong>Sincronização:</strong> Toda retirada da Carteira Pessoal com a palavra "Investimento" gera um aporte automático na Carteira Giro.</p>
                 </div>
             </div>
             <div class="form-grid">
                 <div class="card">
-                    <h3>Parâmetros de Mercado</h3>
-                    <div class="form-group"><label>Taxa CDI Referência (%)</label><input type="number" id="cfgCdi" class="form-control" value="11.25"></div>
-                    <div class="form-group"><label>Inflação IPCA Estimada (%)</label><input type="number" id="cfgIpca" class="form-control" value="4.5"></div>
+                    <h3>Mercado</h3>
+                    <div class="form-group"><label>Taxa CDI Padrão (%)</label><input type="number" id="cfgCdi" class="form-control" value="11.25"></div>
+                    <div class="form-group"><label>Inflação IPCA Padrão (%)</label><input type="number" id="cfgIpca" class="form-control" value="4.5"></div>
                 </div>
                 <div class="card">
-                    <h3>Sistema</h3>
-                    <button class="btn btn-blue" onclick="loadFromSheet()" style="width:100%">Forçar Sincronização Google Sheets</button>
-                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 15px;">Versão 2.7 Pro - Integrada</p>
+                    <h3>Sincronização</h3>
+                    <button class="btn btn-blue" onclick="loadFromSheet()" style="width:100%">Sincronizar Planilha Agora</button>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 15px;">URL: Google Sheets Ativo</p>
                 </div>
             </div>
         </section>
