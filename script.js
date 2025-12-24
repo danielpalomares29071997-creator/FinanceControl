@@ -8,7 +8,7 @@ const ITEMS_PER_PAGE = 15;
 let filteredEvolutionData = [];
 
 // URL DO APP SCRIPT
-const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbzW-kPYS2xDqSyEjE04iwL_FXR_ZaRqKeXdw5XadLH47QobjHHNbI-biORVsgNBHVaIxg/exec";
+const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbw6n_SqtEYQ4lsJHpEr4KF4i2WlI_kKCCgKE32XPEvjlI5F9d9YzCJpVf1ppLirdDM/exec";
 
 // INSTÂNCIAS GRÁFICOS
 let charts = { pie: null, bar: null, evo: null, exp: null, comp: null };
@@ -391,4 +391,5 @@ function renderHistory() {
     investments.forEach(i => tb.innerHTML += `<tr><td>${i.name}</td><td>${i.date}</td><td>${i.expiry||'-'}</td><td>${formatCurrency(i.value)}</td><td><button onclick="deleteInvestment(${i.id})">🗑️</button></td></tr>`);
 }
 function deletePlan(id) { plans = plans.filter(p=>p.id!==id); renderPlansTable(); saveLocal(); }
+
 
