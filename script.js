@@ -55,6 +55,14 @@ function checkPasswordAndShowConfig(el) {
     if(p === '2915') showPage('config', el);
 }
 
+function updateGiroAccountVisibility() {
+    const tipo = getVal('gtxType');
+    const accountGroup = document.getElementById('giroAccountGroup');
+    if(accountGroup) {
+        accountGroup.style.display = tipo === 'withdraw' ? 'block' : 'none';
+    }
+}
+
 // --- DATAS ---
 function initDates() {
     const now = new Date();
@@ -154,7 +162,7 @@ function renderAll() {
     setTxt('balanceReinvest', formatCurrency(saldos.reinvest));
     setTxt('balancePersonal', formatCurrency(saldos.personal));
     
-    renderTable('tableBodyReinvest', 'reinvest');
+    renderReinvestTransactionTables();
     renderPersonalTransactionTables();
     updateDashboard();
     renderPlansTable();
@@ -178,6 +186,38 @@ function renderTable(id, wallet) {
             <td>${formatCurrency(t.value)}</td>
             <td><button onclick="deleteTransaction(${t.id})" style="padding: 4px 8px; font-size: 12px;" class="btn btn-danger">🗑️</button></td>
         </tr>`;
+    });
+}
+
+function renderReinvestTransactionTables() {
+    const pendingTb = document.getElementById('tableBodyReinvestPending');
+    const realizedTb = document.getElementById('tableBodyReinvestRealized');
+    
+    if(!pendingTb || !realizedTb) return;
+    
+    pendingTb.innerHTML = '';
+    realizedTb.innerHTML = '';
+    
+    const giroTx = transactions.filter(t => t.wallet === 'reinvest');
+    
+    giroTx.forEach(t => {
+        const isRealized = t.realized === true || t.realized === 'yes';
+        const row = `<tr>
+            <td>${t.date.split('-').reverse().join('/')}</td>
+            <td class="${t.type==='deposit'?'text-green':'text-red'}">${t.type==='deposit'?'Entrada':'Saída'}</td>
+            <td>${t.desc}</td>
+            <td>${formatCurrency(t.value)}</td>
+            <td style="display: flex; gap: 5px;">
+                <button onclick="editTransaction(${t.id})" style="padding: 4px 8px; font-size: 12px;" class="btn btn-blue">✏️</button>
+                <button onclick="deleteTransaction(${t.id})" style="padding: 4px 8px; font-size: 12px;" class="btn btn-danger">🗑️</button>
+            </td>
+        </tr>`;
+        
+        if(isRealized) {
+            realizedTb.innerHTML += row;
+        } else {
+            pendingTb.innerHTML += row;
+        }
     });
 }
 
