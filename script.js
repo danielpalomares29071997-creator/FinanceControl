@@ -128,8 +128,10 @@ function renderTable(id, wallet) {
 
 // --- DASHBOARD ---
 function updateDashboard() {
-    const start = new Date(getVal('dashGlobalStart'));
-    const end = new Date(getVal('dashGlobalEnd'));
+    const startStr = getVal('dashGlobalStart') || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+    const endStr = getVal('dashGlobalEnd') || new Date().toISOString().split('T')[0];
+    const start = new Date(startStr);
+    const end = new Date(endStr);
     const b = calculateBalances();
 
     let inc = 0, exp = 0;
@@ -342,7 +344,7 @@ document.getElementById('planForm').onsubmit = (e) => {
 
 // --- PERSISTÊNCIA & SHEET ---
 function formatCurrency(v) { return (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
-function getVal(id) { return document.getElementById(id).value; }
+function getVal(id) { const el = document.getElementById(id); return el ? el.value : ''; }
 function setVal(id, v) { const el = document.getElementById(id); if(el) el.value = v; }
 function setTxt(id, t) { const el = document.getElementById(id); if(el) el.innerText = t; }
 
