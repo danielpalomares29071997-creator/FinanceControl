@@ -16,7 +16,7 @@ const ITEMS_PER_PAGE = 15;
 let filteredEvolutionData = [];
 
 // URL DO APP SCRIPT
-const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbzW-kPYS2xDqSyEjE04iwL_FXR_ZaRqKeXdw5XadLH47QobjHHNbI-biORVsgNBHVaIxg/exec";
+const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbyAG1s5Z51pTrXSn4HY0rF_yBUPGBJ0NNpyUsfZaUKh3Zp9Sm7Su5QNlYXWxwCTE9s/exec";
 
 // INSTÂNCIAS GRÁFICOS
 let charts = { pie: null, bar: null, evo: null, exp: null, comp: null };
