@@ -3,6 +3,14 @@ let investments = [];
 let transactions = [];
 let plans = [];
 
+let config = {
+    giroCategories: ['Investimento', 'Transferência', 'Resgate'],
+    giroAccounts: ['Carteira Pessoal', 'Conta Bancária', 'Corretora'],
+    personalCategories: ['Alimentação', 'Transporte', 'Saúde', 'Lazer'],
+    personalSubcategories: ['Restaurante', 'Supermercado', 'Uber', 'Ônibus', 'Farmácia'],
+    personalAccounts: ['Dinheiro', 'Conta Bancária', 'Carteira de Giro']
+};
+
 let evolutionPage = 1;
 const ITEMS_PER_PAGE = 15;
 let filteredEvolutionData = [];
@@ -17,7 +25,8 @@ window.onload = function() {
     loadLocal();
     initDates();
     renderAll();
-    loadFromSheet(); // Busca dados atualizados da planilha
+    loadFromSheet();
+    setTimeout(() => { populateAllSelects(); }, 50);
 };
 
 // --- NAVEGAÇÃO ---
@@ -71,32 +80,72 @@ function calculateBalances() {
     return { reinvest: re, personal: pe };
 }
 
-// --- TRANSAÇÕES ---
-function handleTransaction(type, wallet) {
-    const desc = prompt("Descrição da operação:"); if(!desc) return;
-    const valStr = prompt("Valor (R$):"); if(!valStr) return;
-    const value = parseFloat(valStr.replace(',','.'));
-    if(isNaN(value)) return alert("Valor inválido");
+// --- CONFIGURAÇÕES ---
+function addConfig(key, inputId) {
+    const raw = getVal(inputId);
+    const val = raw ? raw.trim() : '';
+    if(!val) return alert("Digite um valor!");
+    if(!config[key]) config[key] = [];
+    if(config[key].includes(val)) { setVal(inputId, ''); return alert('Já existe este item.'); }
+    config[key].push(val);
+    config[key] = Array.from(new Set(config[key].map(i => i.trim()).filter(Boolean))).sort();
+    saveLocal();
+    renderConfigTables();
+    populateAllSelects();
+    setVal(inputId, '');
+}
 
-    const newT = {
-        dataType: 'transaction', id: Date.now(),
-        date: new Date().toISOString().split('T')[0],
-        type, wallet, desc, value
-    };
-    transactions.unshift(newT);
+function removeConfig(key, index) {
+    config[key].splice(index, 1);
+    saveLocal();
+    renderConfigTables();
+    populateAllSelects();
+}
 
-    // LÓGICA DE INVESTIMENTO AUTOMÁTICO
-    if(wallet === 'personal' && type === 'withdraw' && desc.toLowerCase().includes('investimento')) {
-        const syncT = {
-            dataType: 'transaction', id: Date.now()+1,
-            date: newT.date, type: 'deposit', wallet: 'reinvest',
-            desc: `Ref: ${desc}`, value
-        };
-        transactions.unshift(syncT);
-        sendToSheet(syncT);
-    }
+function renderConfigTables() {
+    renderConfigTable('giroCategories', 'configGiroCategoryTable');
+    renderConfigTable('giroAccounts', 'configGiroAccountTable');
+    renderConfigTable('personalCategories', 'configPersonalCategoryTable');
+    renderConfigTable('personalSubcategories', 'configPersonalSubcategoryTable');
+    renderConfigTable('personalAccounts', 'configPersonalAccountTable');
+    populateAllSelects();
+}
 
-    saveLocal(); renderAll(); sendToSheet(newT);
+function renderConfigTable(key, tableId) {
+    const tb = document.getElementById(tableId);
+    if(!tb) return;
+    tb.innerHTML = '';
+    const items = config[key] || [];
+    items.forEach((item, idx) => {
+        tb.innerHTML += `<tr style="border-bottom: 1px solid var(--border-color); padding: 8px 0;">
+            <td style="padding: 8px;">${item}</td>
+            <td style="text-align: right; padding: 8px;"><button class="btn btn-danger" onclick="removeConfig('${key}', ${idx})" style="padding: 4px 8px; font-size: 12px;">🗑️</button></td>
+        </tr>`;
+    });
+}
+
+function populateSelect(selectId, items) {
+    const select = document.getElementById(selectId);
+    if(!select) return;
+    const currentValue = select.value;
+    const list = (items || []).map(i => (i || '').toString().trim()).filter(Boolean);
+    const uniq = Array.from(new Set(list));
+    select.innerHTML = '<option value="">Selecione...</option>';
+    uniq.forEach(item => {
+        const option = document.createElement('option');
+        option.value = item;
+        option.text = item;
+        select.appendChild(option);
+    });
+    if(currentValue) select.value = currentValue;
+}
+
+function populateAllSelects() {
+    populateSelect('gtxCategory', config.giroCategories || []);
+    populateSelect('gtxAccount', config.giroAccounts || []);
+    populateSelect('ptxCategory', config.personalCategories || []);
+    populateSelect('ptxSubcategory', config.personalSubcategories || []);
+    populateSelect('ptxAccount', config.personalAccounts || []);
 }
 
 // --- RENDERIZAÇÃO ---
@@ -106,10 +155,16 @@ function renderAll() {
     setTxt('balancePersonal', formatCurrency(saldos.personal));
     
     renderTable('tableBodyReinvest', 'reinvest');
-    renderTable('tableBodyPersonal', 'personal');
+    renderPersonalTransactionTables();
     updateDashboard();
     renderPlansTable();
     renderHistory();
+    
+    const despesasSection = document.getElementById('despesas');
+    if(despesasSection && despesasSection.classList.contains('active-section')) {
+        renderExpenseAnalysis();
+        populateAllSelects();
+    }
 }
 
 function renderTable(id, wallet) {
@@ -121,41 +176,113 @@ function renderTable(id, wallet) {
             <td class="${t.type==='deposit'?'text-green':'text-red'}">${t.type==='deposit'?'Entrada':'Saída'}</td>
             <td>${t.desc}</td>
             <td>${formatCurrency(t.value)}</td>
-            <td><button onclick="deleteTransaction(${t.id})">🗑️</button></td>
+            <td><button onclick="deleteTransaction(${t.id})" style="padding: 4px 8px; font-size: 12px;" class="btn btn-danger">🗑️</button></td>
         </tr>`;
+    });
+}
+
+function renderPersonalTransactionTables() {
+    const pendingTb = document.getElementById('tableBodyPersonalPending');
+    const realizedTb = document.getElementById('tableBodyPersonalRealized');
+    
+    if(!pendingTb || !realizedTb) return;
+    
+    pendingTb.innerHTML = '';
+    realizedTb.innerHTML = '';
+    
+    const personalTx = transactions.filter(t => t.wallet === 'personal');
+    
+    personalTx.forEach(t => {
+        const isRealized = t.realized === true || t.realized === 'yes';
+        const row = `<tr>
+            <td>${t.date.split('-').reverse().join('/')}</td>
+            <td class="${t.type==='deposit'?'text-green':'text-red'}">${t.type==='deposit'?'Entrada':'Saída'}</td>
+            <td>${t.desc}</td>
+            <td>${formatCurrency(t.value)}</td>
+            <td style="display: flex; gap: 5px;">
+                <button onclick="editTransaction(${t.id})" style="padding: 4px 8px; font-size: 12px;" class="btn btn-blue">✏️</button>
+                <button onclick="deleteTransaction(${t.id})" style="padding: 4px 8px; font-size: 12px;" class="btn btn-danger">🗑️</button>
+            </td>
+        </tr>`;
+        
+        if(isRealized) {
+            realizedTb.innerHTML += row;
+        } else {
+            pendingTb.innerHTML += row;
+        }
     });
 }
 
 // --- DASHBOARD ---
 function updateDashboard() {
-    const start = new Date(getVal('dashGlobalStart'));
-    const end = new Date(getVal('dashGlobalEnd'));
+    const startStr = getVal('dashGlobalStart') || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+    const endStr = getVal('dashGlobalEnd') || new Date().toISOString().split('T')[0];
+    const start = new Date(startStr);
+    const end = new Date(endStr);
     const b = calculateBalances();
 
-    let inc = 0, exp = 0;
+    let incRealized = 0, expRealized = 0, incPrev = 0, expPrev = 0;
     transactions.forEach(t => {
         const d = new Date(t.date);
         if(d >= start && d <= end) {
-            t.type === 'deposit' ? inc += t.value : exp += t.value;
+            const isRealized = t.realized === true || t.realized === 'yes';
+            if(isRealized) {
+                t.type === 'deposit' ? incRealized += t.value : expRealized += t.value;
+            } else {
+                t.type === 'deposit' ? incPrev += t.value : expPrev += t.value;
+            }
         }
     });
 
-    setTxt('dashPeriodIncome', formatCurrency(inc));
-    setTxt('dashPeriodExpense', formatCurrency(exp));
-    setTxt('dashBalanceReinvest', formatCurrency(b.reinvest));
-    const totalInv = investments.reduce((a, b) => a + (parseFloat(b.value)||0), 0);
-    setTxt('dashTotalInvested', formatCurrency(totalInv));
+    setTxt('dashPeriodIncomePrev', formatCurrency(incPrev));
+    setTxt('dashPeriodIncome', formatCurrency(incRealized));
+    setTxt('dashPeriodExpensePrev', formatCurrency(expPrev));
+    setTxt('dashPeriodExpense', formatCurrency(expRealized));
+    
+    const investedRealized = investments.filter(i => i.realized === true || i.realized === 'yes').reduce((a, b) => a + (parseFloat(b.value)||0), 0);
+    const investedPrev = investments.filter(i => i.realized !== true && i.realized !== 'yes').reduce((a, b) => a + (parseFloat(b.value)||0), 0);
+    setTxt('dashTotalInvestedPrev', formatCurrency(investedPrev));
+    setTxt('dashTotalInvested', formatCurrency(investedRealized));
+    
+    const bPrev = calculateBalancesRealized(false);
+    const bReal = calculateBalancesRealized(true);
+    setTxt('dashBalanceReinvestPrev', formatCurrency(bPrev.reinvest));
+    setTxt('dashBalanceReinvest', formatCurrency(bReal.reinvest));
 
-    renderDashCharts(inc, exp);
+    renderDashCharts(incRealized, expRealized);
 }
 
-function renderDashCharts(inc, exp) {
+function calculateBalancesRealized(realized = true) {
+    let re = 0, pe = 0;
+    const filter = realized ? (t => t.realized === true || t.realized === 'yes') : (t => t.realized !== true && t.realized !== 'yes');
+    transactions.filter(filter).forEach(t => {
+        const v = parseFloat(t.value) || 0;
+        if(t.wallet === 'reinvest') t.type === 'deposit' ? re += v : re -= v;
+        else if(t.wallet === 'personal') t.type === 'deposit' ? pe += v : pe -= v;
+    });
+    return { reinvest: re, personal: pe };
+}
+
+function renderDashCharts(incReal, expReal) {
+    let incPrev = 0, expPrev = 0;
+    transactions.forEach(t => {
+        if(t.realized !== true && t.realized !== 'yes') {
+            t.type === 'deposit' ? incPrev += t.value : expPrev += t.value;
+        }
+    });
+    
     const ctx = document.getElementById('barChartDash'); if(!ctx) return;
     if(charts.bar) charts.bar.destroy();
-    charts.bar = new Chart(ctx.getContext('2d'), {
+    charts.bar = new Chart(ctx, {
         type: 'bar',
-        data: { labels: ['Receitas', 'Despesas'], datasets: [{ data: [inc, exp], backgroundColor: ['#00b894', '#ff7675'] }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        data: { 
+            labels: ['Receitas', 'Despesas'], 
+            datasets: [
+                { label: 'Previsto', data: [incPrev, expPrev], backgroundColor: 'rgba(0,184,148,0.3)' },
+                { label: 'Realizado', data: [incReal, expReal], backgroundColor: ['#00b894', '#ff7675'] }
+            ] 
+        },
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { stacked: false } } }
     });
     renderPieChart();
 }
@@ -185,7 +312,7 @@ function renderExpenseAnalysis() {
     expenses.forEach(e => {
         const cat = e.desc.split(' ')[0] || 'Geral';
         if(!categories[cat]) categories[cat] = { total: 0, items: [] };
-        categories[cat].total += e.value;
+        categories[cat].total += parseFloat(e.value) || 0;
         categories[cat].items.push(e);
         tableBody.innerHTML += `<tr><td>${e.date}</td><td>${cat}</td><td>${e.desc}</td><td>${formatCurrency(e.value)}</td></tr>`;
     });
@@ -198,6 +325,42 @@ function renderExpenseAnalysis() {
             node.innerHTML += `<div class="tree-item"><span>${item.desc}</span><span>${formatCurrency(item.value)}</span></div>`;
         });
         container.appendChild(node);
+    }
+
+    const canvasContainer = document.getElementById('expenseCompareChart');
+    if(canvasContainer) {
+        try {
+            const catNames = Object.keys(categories);
+            const catValues = catNames.map(cat => categories[cat].total);
+            const colors = ['#ff7675', '#fd79a8', '#fdcb6e', '#6c5ce7', '#0984e3', '#00b894', '#e17055', '#74b9ff', '#a29bfe', '#fab1a0'];
+            
+            if(charts.exp) {
+                charts.exp.destroy();
+                charts.exp = null;
+            }
+            
+            if(catNames.length > 0) {
+                charts.exp = new Chart(canvasContainer, {
+                    type: 'doughnut',
+                    data: { 
+                        labels: catNames, 
+                        datasets: [{ 
+                            data: catValues, 
+                            backgroundColor: colors.slice(0, catNames.length)
+                        }] 
+                    },
+                    options: { 
+                        responsive: true, 
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom' }
+                        }
+                    }
+                });
+            }
+        } catch(err) {
+            console.error('Erro ao renderizar gráfico de despesas:', err);
+        }
     }
 }
 
@@ -317,17 +480,21 @@ document.getElementById('investForm').onsubmit = (e) => {
     const val = parseFloat(getVal('inpValue'));
     if(val > b.reinvest) return alert("Saldo insuficiente no Giro!");
     
+    const realized = document.querySelector('input[name="inpRealized"]:checked').value === 'yes';
+    
     const newI = {
         dataType: 'investment', id: Date.now(),
         name: getVal('inpName'), institution: getVal('inpInst'),
         type: getVal('inpType'), value: val, date: getVal('inpDate'),
         expiry: getVal('inpExpiry'), ratePrev: getVal('inpRatePrev'),
-        rateTypePrev: getVal('inpRateTypePrev'), status: getVal('inpStatus')
+        rateTypePrev: getVal('inpRateTypePrev'), status: getVal('inpStatus'),
+        realized: realized
     };
     const sync = {
         dataType: 'transaction', id: Date.now()+1,
         date: newI.date, type: 'withdraw', wallet: 'reinvest',
-        desc: `Aporte: ${newI.name}`, value: val
+        desc: `Aporte: ${newI.name}`, value: val,
+        realized: realized
     };
     investments.push(newI); transactions.unshift(sync);
     saveLocal(); renderAll(); sendToSheet(newI); sendToSheet(sync);
@@ -336,13 +503,131 @@ document.getElementById('investForm').onsubmit = (e) => {
 
 document.getElementById('planForm').onsubmit = (e) => {
     e.preventDefault();
-    const newP = { id: Date.now(), monthYear: getVal('inpPlanMonth'), targetValue: parseFloat(getVal('inpPlanValue')), category: getVal('inpPlanCategory') };
+    const realized = document.querySelector('input[name="planRealized"]:checked').value === 'yes';
+    const newP = { 
+        id: Date.now(), 
+        monthYear: getVal('inpPlanMonth'), 
+        targetValue: parseFloat(getVal('inpPlanValue')), 
+        category: getVal('inpPlanCategory'),
+        realized: realized
+    };
     plans.push(newP); saveLocal(); renderPlansTable(); alert("Meta salva!");
+};
+
+document.getElementById('personalTransactionForm').onsubmit = (e) => {
+    e.preventDefault();
+    
+    const name = getVal('ptxName');
+    const category = getVal('ptxCategory');
+    const subcategory = getVal('ptxSubcategory');
+    const date = getVal('ptxDate');
+    const value = parseFloat(getVal('ptxValue'));
+    const type = getVal('ptxType');
+    const realized = document.querySelector('input[name="ptxRealized"]:checked').value === 'yes';
+    const account = getVal('ptxAccount');
+    
+    if(!name || !category || !date || !value || !type) {
+        return alert("Preencha todos os campos obrigatórios!");
+    }
+    
+    const newT = {
+        dataType: 'transaction', 
+        id: Date.now(),
+        date: date,
+        type: type,
+        wallet: 'personal',
+        desc: `${category} - ${subcategory ? subcategory + ' - ' : ''}${name}`,
+        value: value,
+        category: category,
+        subcategory: subcategory,
+        account: account,
+        realized: realized
+    };
+    
+    transactions.unshift(newT);
+    saveLocal(); 
+    renderAll(); 
+    sendToSheet(newT);
+    
+    if(type === 'withdraw' && account && (config.giroAccounts || []).includes(account)) {
+        const autoT = {
+            dataType: 'transaction',
+            id: Date.now() + 0.5,
+            date: date,
+            type: 'deposit',
+            wallet: 'reinvest',
+            desc: `Auto: ${name}`,
+            value: value,
+            category: 'Entrada Pessoal',
+            account: account,
+            realized: realized,
+            autoGenerated: true
+        };
+        transactions.unshift(autoT);
+        sendToSheet(autoT);
+    }
+    
+    e.target.reset();
+    alert("Transação registrada!");
+};
+
+document.getElementById('giroTransactionForm').onsubmit = (e) => {
+    e.preventDefault();
+    
+    const name = getVal('gtxName');
+    const category = getVal('gtxCategory');
+    const account = getVal('gtxAccount');
+    const date = getVal('gtxDate');
+    const value = parseFloat(getVal('gtxValue'));
+    const type = getVal('gtxType');
+    const realized = document.querySelector('input[name="gtxRealized"]:checked').value === 'yes';
+    
+    if(!name || !category || !date || !value || !type) {
+        return alert("Preencha todos os campos obrigatórios!");
+    }
+    
+    const newT = {
+        dataType: 'transaction', 
+        id: Date.now(),
+        date: date,
+        type: type,
+        wallet: 'reinvest',
+        desc: `${category} - ${account ? account + ' - ' : ''}${name}`,
+        value: value,
+        category: category,
+        account: account,
+        realized: realized
+    };
+    
+    transactions.unshift(newT);
+    saveLocal(); 
+    renderAll(); 
+    sendToSheet(newT);
+    
+    if(type === 'withdraw' && account === 'Carteira Pessoal') {
+        const autoT = {
+            dataType: 'transaction',
+            id: Date.now() + 0.5,
+            date: date,
+            type: 'deposit',
+            wallet: 'personal',
+            desc: `Auto: ${name}`,
+            value: value,
+            category: 'Entrada Giro',
+            realized: realized,
+            autoGenerated: true
+        };
+        transactions.unshift(autoT);
+        sendToSheet(autoT);
+    }
+    
+    e.target.reset();
+    alert("Movimentação registrada!");
 };
 
 // --- PERSISTÊNCIA & SHEET ---
 function formatCurrency(v) { return (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
-function getVal(id) { return document.getElementById(id).value; }
+function getVal(id) { const el = document.getElementById(id); return el ? el.value : ''; }
 function setVal(id, v) { const el = document.getElementById(id); if(el) el.value = v; }
 function setTxt(id, t) { const el = document.getElementById(id); if(el) el.innerText = t; }
 
@@ -350,45 +635,107 @@ function saveLocal() {
     localStorage.setItem('investments', JSON.stringify(investments));
     localStorage.setItem('transactions', JSON.stringify(transactions));
     localStorage.setItem('plans', JSON.stringify(plans));
+    localStorage.setItem('config', JSON.stringify(config));
 }
+
 function loadLocal() {
     investments = JSON.parse(localStorage.getItem('investments')) || [];
     transactions = JSON.parse(localStorage.getItem('transactions')) || [];
     plans = JSON.parse(localStorage.getItem('plans')) || [];
+    const savedConfig = JSON.parse(localStorage.getItem('config')) || {};
+    config = Object.assign({}, config, savedConfig);
+    renderConfigTables();
 }
 
 async function sendToSheet(d) {
-    try { await fetch(GOOGLE_SHEET_URL, { method:'POST', mode:'no-cors', body: JSON.stringify(d) }); } catch(e) {}
+    try {
+        const res = await fetch(GOOGLE_SHEET_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(d) });
+        if (res) {
+            console.log('sendToSheet: response type=', res.type, 'status=', res.status);
+        }
+    } catch (e) {
+        console.error('sendToSheet error:', e);
+    }
 }
 
 async function loadFromSheet() {
     const ind = document.getElementById('syncIndicator');
     try {
-        // Timestamp para evitar cache do navegador e forçar atualização real do Sheets
-        const res = await fetch(`${GOOGLE_SHEET_URL}?t=${Date.now()}`);
-        const d = await res.json();
-        if(d.investments) investments = d.investments;
-        if(d.transactions) transactions = d.transactions;
-        if(ind) { ind.innerText = "Online"; ind.className = "status-indicator status-online"; }
-        renderAll();
+        const old = document.getElementById('jsonpSheetScript');
+        if (old) old.remove();
+
+        if (window._sheetJsonpTimeout) clearTimeout(window._sheetJsonpTimeout);
+
+        window.handleSheetData = function(d) {
+            try {
+                if (window._sheetJsonpTimeout) { clearTimeout(window._sheetJsonpTimeout); window._sheetJsonpTimeout = null; }
+                if (d && d.investments) {
+                    investments = d.investments || [];
+                }
+                if (d && d.transactions) {
+                    transactions = d.transactions || [];
+                }
+                if(ind) { ind.innerText = 'Online'; ind.className = 'status-indicator status-online'; }
+                renderAll();
+                populateAllSelects();
+            } catch(err) {
+                console.error('handleSheetData error:', err);
+                if(ind) { ind.innerText = 'Local'; ind.className = 'status-indicator status-offline'; }
+            }
+        };
+
+        const url = `${GOOGLE_SHEET_URL}?t=${Date.now()}&callback=handleSheetData`;
+        const s = document.createElement('script');
+        s.id = 'jsonpSheetScript';
+        s.src = url;
+        s.async = true;
+        s.onerror = function() {
+            console.error('JSONP script error loading', url);
+            if(ind) { ind.innerText = 'Local'; ind.className = 'status-indicator status-offline'; }
+        };
+        document.head.appendChild(s);
+
+        window._sheetJsonpTimeout = setTimeout(function() {
+            console.error('JSONP timeout waiting for sheet data');
+            if(ind) { ind.innerText = 'Local'; ind.className = 'status-indicator status-offline'; }
+        }, 8000);
+
     } catch(e) {
-        if(ind) { ind.innerText = "Local"; ind.className = "status-indicator status-offline"; }
+        console.error('loadFromSheet error:', e);
+        if(ind) { ind.innerText = 'Local'; ind.className = 'status-indicator status-offline'; }
     }
 }
 
 function deleteTransaction(id) { if(confirm("Apagar?")) { transactions = transactions.filter(t=>t.id!==id); saveLocal(); renderAll(); } }
+function editTransaction(id) { 
+    const tx = transactions.find(t => t.id === id);
+    if(!tx) return alert("Transação não encontrada");
+    
+    const newRealized = confirm("Marcar como realizado?");
+    tx.realized = newRealized ? 'yes' : 'no';
+    saveLocal(); 
+    renderAll();
+}
 function deleteInvestment(id) { if(confirm("Apagar?")) { investments = investments.filter(i=>i.id!==id); saveLocal(); renderAll(); } }
 function clearAllData() { if(confirm("Limpar local?")) { localStorage.clear(); location.reload(); } }
 
 function renderPlansTable() {
     const tb = document.getElementById('plansTableBody'); if(!tb) return;
     tb.innerHTML = '';
-    plans.forEach(p => tb.innerHTML += `<tr><td>${p.monthYear}</td><td>${p.category}</td><td>${formatCurrency(p.targetValue)}</td><td><button onclick="deletePlan(${p.id})">🗑️</button></td></tr>`);
+    plans.forEach(p => {
+        const isRealized = p.realized === true || p.realized === 'yes';
+        tb.innerHTML += `<tr><td>${p.monthYear}</td><td>${p.category}</td><td>${formatCurrency(p.targetValue)}</td><td><span class="${isRealized ? 'text-green' : 'text-red'}">${isRealized ? '✓ Sim' : '✗ Não'}</span></td><td><button onclick="deletePlan(${p.id})">🗑️</button></td></tr>`;
+    });
 }
+
 function renderHistory() {
     const tb = document.getElementById('investTableBody'); if(!tb) return;
     tb.innerHTML = '';
-    investments.forEach(i => tb.innerHTML += `<tr><td>${i.name}</td><td>${i.date}</td><td>${i.expiry||'-'}</td><td>${formatCurrency(i.value)}</td><td><button onclick="deleteInvestment(${i.id})">🗑️</button></td></tr>`);
+    investments.forEach(i => {
+        const isRealized = i.realized === true || i.realized === 'yes';
+        tb.innerHTML += `<tr><td>${i.name}</td><td>${i.date}</td><td>${i.expiry||'-'}</td><td>${formatCurrency(i.value)}</td><td><span class="${isRealized ? 'text-green' : 'text-red'}">${isRealized ? '✓ Sim' : '✗ Não'}</span></td><td><button onclick="deleteInvestment(${i.id})">🗑️</button></td></tr>`;
+    });
 }
+
 function deletePlan(id) { plans = plans.filter(p=>p.id!==id); renderPlansTable(); saveLocal(); }
 
