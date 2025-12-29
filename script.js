@@ -706,6 +706,48 @@ async function loadFromSheet() {
     }
 }
 
+// Função para TESTAR a URL do Apps Script (chame esto no console)
+window.testGoogleSheetsConnection = function() {
+    console.log('%c=== TESTE DE CONEXÃO GOOGLE SHEETS ===', 'color: blue; font-size: 14px; font-weight: bold;');
+    console.log('URL do Apps Script:', GOOGLE_SHEET_URL);
+    
+    const testUrl = `${GOOGLE_SHEET_URL}?t=${Date.now()}`;
+    console.log('URL de teste (GET):', testUrl);
+    
+    // Teste 1: JSONP
+    console.log('%cTeste 1: JSONP', 'color: green; font-weight: bold;');
+    window._testJsonpCallback = function(data) {
+        console.log('%c✓ JSONP funcionando!', 'color: green; font-weight: bold;');
+        console.log('Dados recebidos:', data);
+        delete window._testJsonpCallback;
+    };
+    
+    const s = document.createElement('script');
+    s.src = `${GOOGLE_SHEET_URL}?t=${Date.now()}&callback=_testJsonpCallback`;
+    s.onerror = function() {
+        console.error('%c✗ Erro ao carregar JSONP', 'color: red; font-weight: bold;');
+    };
+    
+    const timeout = setTimeout(() => {
+        console.error('%c✗ JSONP timeout (8 segundos) - Apps Script pode estar inacessível', 'color: orange; font-weight: bold;');
+    }, 8000);
+    
+    s.onload = function() {
+        clearTimeout(timeout);
+    };
+    
+    document.head.appendChild(s);
+    
+    // Teste 2: Verificar localStorage
+    console.log('%cTeste 2: Dados em localStorage', 'color: green; font-weight: bold;');
+    const local = {
+        investments: investments.length,
+        transactions: transactions.length,
+        plans: plans.length,
+        config: Object.keys(config).length
+    };
+    console.log('Dados salvos localmente:', local);
+};
 function deleteTransaction(id) { if(confirm("Apagar?")) { transactions = transactions.filter(t=>t.id!==id); saveLocal(); renderAll(); } }
 function editTransaction(id) { 
     const tx = transactions.find(t => t.id === id);
