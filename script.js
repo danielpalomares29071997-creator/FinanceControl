@@ -8,7 +8,7 @@ const ITEMS_PER_PAGE = 15;
 let filteredEvolutionData = [];
 
 // URL DO APP SCRIPT
-const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbw6n_SqtEYQ4lsJHpEr4KF4i2WlI_kKCCgKE32XPEvjlI5F9d9YzCJpVf1ppLirdDM/exec";
+const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbzW-kPYS2xDqSyEjE04iwL_FXR_ZaRqKeXdw5XadLH47QobjHHNbI-biORVsgNBHVaIxg/exec";
 
 // INSTÂNCIAS GRÁFICOS
 let charts = { pie: null, bar: null, evo: null, exp: null, comp: null };
@@ -128,10 +128,8 @@ function renderTable(id, wallet) {
 
 // --- DASHBOARD ---
 function updateDashboard() {
-    const startStr = getVal('dashGlobalStart') || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
-    const endStr = getVal('dashGlobalEnd') || new Date().toISOString().split('T')[0];
-    const start = new Date(startStr);
-    const end = new Date(endStr);
+    const start = new Date(getVal('dashGlobalStart'));
+    const end = new Date(getVal('dashGlobalEnd'));
     const b = calculateBalances();
 
     let inc = 0, exp = 0;
@@ -344,7 +342,7 @@ document.getElementById('planForm').onsubmit = (e) => {
 
 // --- PERSISTÊNCIA & SHEET ---
 function formatCurrency(v) { return (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
-function getVal(id) { const el = document.getElementById(id); return el ? el.value : ''; }
+function getVal(id) { return document.getElementById(id).value; }
 function setVal(id, v) { const el = document.getElementById(id); if(el) el.value = v; }
 function setTxt(id, t) { const el = document.getElementById(id); if(el) el.innerText = t; }
 
@@ -393,5 +391,4 @@ function renderHistory() {
     investments.forEach(i => tb.innerHTML += `<tr><td>${i.name}</td><td>${i.date}</td><td>${i.expiry||'-'}</td><td>${formatCurrency(i.value)}</td><td><button onclick="deleteInvestment(${i.id})">🗑️</button></td></tr>`);
 }
 function deletePlan(id) { plans = plans.filter(p=>p.id!==id); renderPlansTable(); saveLocal(); }
-
 
